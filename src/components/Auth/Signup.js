@@ -10,18 +10,26 @@ import {
   Message,
   Icon
 } from "semantic-ui-react";
+import md5 from "md5";
 import { Link } from "react-router-dom";
 
-export default function Signup(props) {
-  const initialFormData = {
+//================================================================================================
+
+export default function Signup() {
+  // ------------------------------------------------State----------------------------------------
+
+  const initialFormState = {
     username: "",
     email: "",
     password: "",
     passwordConfirm: ""
   };
-  const [formField, changeFormFields] = useState(initialFormData);
+  const [formField, changeFormFields] = useState(initialFormState);
   const [errors, handleErrors] = useState([]);
+  const [loading, toggleLoading] = useState(false);
+  const [usersRef, handleUserRef] = useState(firebase.database().ref("users"));
 
+  //==================================================Functions=====================================
   const handleChange = event => {
     changeFormFields({
       ...formField,
@@ -31,14 +39,49 @@ export default function Signup(props) {
 
   const handleSubmit = event => {
     const { email, password } = formField;
+
+    event.preventDefault();
     if (isFormValid()) {
-      event.preventDefault();
+      handleErrors([]);
+      toggleLoading(true);
       firebase
         .auth()
         .createUserWithEmailAndPassword(email, password)
-        .then(user => console.log(user))
-        .catch(err => console.log(err));
+        .then(user => {
+          console.log(user);
+          user.user
+            .updateProfile({
+              displayName: formField.username,
+              photoURL: `http://gravatar.com/avatar/${md5(
+                user.user.email
+              )}?=identicon`
+            })
+            .then(() => {
+              saveUser(user).then(() => {
+                console.log("User Saved");
+              });
+              toggleLoading(false);
+            })
+            .catch(err => {
+              console.log(err);
+              const newErrors = errors.concat(err);
+              handleErrors(newErrors);
+              toggleLoading(false);
+            });
+        })
+        .catch(err => {
+          const newErrors = errors.concat(err);
+          handleErrors(newErrors);
+          toggleLoading(false);
+        });
     }
+  };
+
+  const saveUser = user => {
+    return usersRef.child(user.user.uid).set({
+      name: user.user.displayName,
+      avatar: user.user.photoURL
+    });
   };
   const isFormEmpty = () => {
     const { username, email, password, passwordConfirm } = formField;
@@ -81,8 +124,15 @@ export default function Signup(props) {
     }
   };
 
+  const handleInputError = inputName => {
+    return errors.some(error => error.message.toLowerCase().includes(inputName))
+      ? "error"
+      : "";
+  };
   const displayError = errors =>
     errors.map((error, key) => <p key={key}>{error.message}</p>);
+
+  //====================================================RENDER============================
 
   return (
     <Grid textAlign="center" verticalAlign="middle" className="app">
@@ -112,6 +162,7 @@ export default function Signup(props) {
               value={formField.email}
               onChange={handleChange}
               type="email"
+              className={handleInputError("email")}
             />
             <Form.Input
               fluid
@@ -122,6 +173,7 @@ export default function Signup(props) {
               value={formField.password}
               onChange={handleChange}
               type="password"
+              className={handleInputError("password")}
             />
             <Form.Input
               fluid
@@ -131,9 +183,16 @@ export default function Signup(props) {
               placeholder="Retype Password"
               value={formField.passwordConfirm}
               onChange={handleChange}
+              className={handleInputError("password")}
               type="password"
             />
-            <Button color="green" fluid size="large">
+            <Button
+              disabled={loading}
+              color="green"
+              fluid
+              size="large"
+              className={loading ? "loading" : ""}
+            >
               Submit
             </Button>
           </Segment>
