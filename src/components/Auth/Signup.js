@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useState } from "react";
 import "../App.css";
 import firebase from "../../firebase";
 import {
@@ -12,22 +12,26 @@ import {
 } from "semantic-ui-react";
 import { Link } from "react-router-dom";
 
-export default class Signup extends Component {
-  state = {
+export default function Signup(props) {
+  const initialFormData = {
     username: "",
     email: "",
     password: "",
-    passwordConfirm: "",
-    errors: []
+    passwordConfirm: ""
   };
-  handleChange = event => {
-    this.setState({
+  const [formField, changeFormFields] = useState(initialFormData);
+  const [errors, handleErrors] = useState([]);
+
+  const handleChange = event => {
+    changeFormFields({
+      ...formField,
       [event.target.name]: event.target.value
     });
   };
-  handleSubmit = event => {
-    const { email, password } = this.state;
-    if (this.isFormValid()) {
+
+  const handleSubmit = event => {
+    const { email, password } = formField;
+    if (isFormValid()) {
       event.preventDefault();
       firebase
         .auth()
@@ -36,7 +40,8 @@ export default class Signup extends Component {
         .catch(err => console.log(err));
     }
   };
-  isFormEmpty = ({ username, email, password, passwordConfirm }) => {
+  const isFormEmpty = () => {
+    const { username, email, password, passwordConfirm } = formField;
     return (
       !username.length ||
       !email.length ||
@@ -44,7 +49,9 @@ export default class Signup extends Component {
       !passwordConfirm.length
     );
   };
-  isPasswordValid = ({ password, passwordConfirm }) => {
+
+  const isPasswordValid = () => {
+    const { password, passwordConfirm } = formField;
     if (password.length < 6 || passwordConfirm.length < 6) {
       return false;
     } else if (password !== passwordConfirm) {
@@ -53,93 +60,94 @@ export default class Signup extends Component {
       return true;
     }
   };
-  isFormValid = () => {
-    let errors = [];
+
+  const isFormValid = () => {
     let error;
-    if (this.isFormEmpty(this.state)) {
+    let newErrors = [];
+    if (isFormEmpty()) {
       error = { message: "Fill in all the fields" };
-      this.setState({ errors: errors.concat(error) });
+      newErrors = newErrors.concat(error);
+      handleErrors(newErrors);
       return false;
-    } else if (!this.isPasswordValid(this.state)) {
+    } else if (!isPasswordValid()) {
       error = {
         message: "Passwords are invalid"
       };
-      this.setState({ errors: errors.concat(error) });
+      newErrors = newErrors.concat(error);
+      handleErrors(newErrors);
       return false;
     } else {
       return true;
     }
   };
 
-  displayError = errors =>
+  const displayError = errors =>
     errors.map((error, key) => <p key={key}>{error.message}</p>);
-  render() {
-    const { username, password, email, passwordConfirm, errors } = this.state;
-    return (
-      <Grid textAlign="center" verticalAlign="middle" className="app">
-        <Grid.Column style={{ maxWidth: 450 }}>
-          <Header as="h2" icon color="green" textAlign="center">
-            <Icon name="puzzle piece" color="green" />
-            Register to React Slack
-          </Header>
-          <Form size="large" onSubmit={this.handleSubmit}>
-            <Segment stacked>
-              <Form.Input
-                fluid
-                name="username"
-                icon="user"
-                iconPosition="left"
-                placeholder="Username"
-                value={username}
-                onChange={this.handleChange}
-                type="text"
-              />
-              <Form.Input
-                fluid
-                name="email"
-                icon="mail"
-                iconPosition="left"
-                placeholder="Email Address"
-                value={email}
-                onChange={this.handleChange}
-                type="email"
-              />
-              <Form.Input
-                fluid
-                name="password"
-                icon="lock"
-                iconPosition="left"
-                placeholder="Password"
-                value={password}
-                onChange={this.handleChange}
-                type="password"
-              />
-              <Form.Input
-                fluid
-                name="passwordConfirm"
-                icon="repeat"
-                iconPosition="left"
-                placeholder="Retype Password"
-                value={passwordConfirm}
-                onChange={this.handleChange}
-                type="password"
-              />
-              <Button color="green" fluid size="large">
-                Submit
-              </Button>
-            </Segment>
-          </Form>
-          {errors.length > 0 && (
-            <Message error>
-              <h3>Error</h3>
-              {this.displayError(errors)}
-            </Message>
-          )}
-          <Message>
-            Already a user ? <Link to="/login">Login</Link>
+
+  return (
+    <Grid textAlign="center" verticalAlign="middle" className="app">
+      <Grid.Column style={{ maxWidth: 450 }}>
+        <Header as="h2" icon color="green" textAlign="center">
+          <Icon name="puzzle piece" color="green" />
+          Register to React Slack
+        </Header>
+        <Form size="large" onSubmit={handleSubmit}>
+          <Segment stacked>
+            <Form.Input
+              fluid
+              name="username"
+              icon="user"
+              iconPosition="left"
+              placeholder="Username"
+              value={formField.username}
+              onChange={handleChange}
+              type="text"
+            />
+            <Form.Input
+              fluid
+              name="email"
+              icon="mail"
+              iconPosition="left"
+              placeholder="Email Address"
+              value={formField.email}
+              onChange={handleChange}
+              type="email"
+            />
+            <Form.Input
+              fluid
+              name="password"
+              icon="lock"
+              iconPosition="left"
+              placeholder="Password"
+              value={formField.password}
+              onChange={handleChange}
+              type="password"
+            />
+            <Form.Input
+              fluid
+              name="passwordConfirm"
+              icon="repeat"
+              iconPosition="left"
+              placeholder="Retype Password"
+              value={formField.passwordConfirm}
+              onChange={handleChange}
+              type="password"
+            />
+            <Button color="green" fluid size="large">
+              Submit
+            </Button>
+          </Segment>
+        </Form>
+        {errors.length > 0 && (
+          <Message error>
+            <h3>Error</h3>
+            {displayError(errors)}
           </Message>
-        </Grid.Column>
-      </Grid>
-    );
-  }
+        )}
+        <Message>
+          Already a user ? <Link to="/login">Login</Link>
+        </Message>
+      </Grid.Column>
+    </Grid>
+  );
 }
